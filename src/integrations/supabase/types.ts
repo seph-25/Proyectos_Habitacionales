@@ -14,7 +14,80 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      projects: {
+        Row: {
+          canton: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          project_type: string | null
+          province: string
+          start_date: string | null
+          status: string
+          units: number | null
+        }
+        Insert: {
+          canton: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          project_type?: string | null
+          province: string
+          start_date?: string | null
+          status?: string
+          units?: number | null
+        }
+        Update: {
+          canton?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          project_type?: string | null
+          province?: string
+          start_date?: string | null
+          status?: string
+          units?: number | null
+        }
+        Relationships: []
+      }
+      status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          id: string
+          new_status: string
+          previous_status: string | null
+          project_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string
+          id?: string
+          new_status: string
+          previous_status?: string | null
+          project_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          id?: string
+          new_status?: string
+          previous_status?: string | null
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "status_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
