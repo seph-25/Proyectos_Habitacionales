@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Spinner } from "@/components/Spinner";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 interface Project {
   id: string;
@@ -103,7 +104,7 @@ const Index = () => {
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{p.canton}, {p.province}</td>
                     <td className="px-6 py-4"><StatusBadge status={p.status} /></td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{format(new Date(p.created_at), "dd/MM/yyyy")}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{format(new Date(p.created_at), "dd MMM yyyy", { locale: es })}</td>
                   </tr>
                 ))}
               </tbody>

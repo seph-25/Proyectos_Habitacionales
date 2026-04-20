@@ -51,8 +51,12 @@ const Projects = () => {
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => {
+    const q = search.toLowerCase();
     return projects.filter((p) => {
-      const matchesText = p.name.toLowerCase().includes(search.toLowerCase());
+      const matchesText =
+        p.name.toLowerCase().includes(q) ||
+        p.canton.toLowerCase().includes(q) ||
+        p.province.toLowerCase().includes(q);
       const matchesStatus = statusFilter === "Todos" || p.status === statusFilter;
       return matchesText && matchesStatus;
     });
@@ -93,7 +97,7 @@ const Projects = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre..."
+            placeholder="Buscar por nombre, cantón o provincia..."
             className="h-10 w-full rounded-sm border border-border bg-background/60 pl-9 pr-3 text-sm outline-none transition-all focus:border-primary focus:bg-white"
           />
         </div>

@@ -8,8 +8,14 @@ import {
   KanbanSquare,
   BarChart2,
   LogOut,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface SidebarProps {
+  open: boolean;
+  onClose: () => void;
+}
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -21,7 +27,7 @@ const NAV = [
   { to: "/reportes", label: "Reportes", icon: BarChart2 },
 ];
 
-export const Sidebar = () => {
+export const Sidebar = ({ open, onClose }: SidebarProps) => {
   const { pathname } = useLocation();
 
   const isActive = (to: string, exact?: boolean) => {
@@ -30,13 +36,28 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-60 flex-col gradient-sidebar text-white">
-      {/* Logo */}
-      <div className="px-6 pb-6 pt-7">
-        <h1 className="text-xl font-extrabold tracking-tight text-white">HABITATRACK</h1>
-        <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.15em] text-white/60">
-          The Architectural Ledger
-        </p>
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-40 flex h-screen w-60 flex-col gradient-sidebar text-white transition-transform duration-300",
+        "lg:translate-x-0",
+        open ? "translate-x-0" : "-translate-x-full",
+      )}
+    >
+      {/* Logo + close button (mobile) */}
+      <div className="flex items-start justify-between px-6 pb-6 pt-7">
+        <div>
+          <h1 className="text-xl font-extrabold tracking-tight text-white">HABITATRACK</h1>
+          <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.15em] text-white/60">
+            The Architectural Ledger
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="mt-1 rounded-md p-1 text-white/60 transition-colors hover:text-white lg:hidden"
+          aria-label="Cerrar menú"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Nav */}
@@ -49,6 +70,7 @@ export const Sidebar = () => {
                 <NavLink
                   to={to}
                   end={exact}
+                  onClick={onClose}
                   className={cn(
                     "group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider transition-colors",
                     active
@@ -72,7 +94,7 @@ export const Sidebar = () => {
       <div className="border-t border-white/10 p-3">
         <button className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-white/60 transition-colors hover:bg-white/5 hover:text-white/90">
           <LogOut className="h-4 w-4" strokeWidth={2.25} />
-          Sign Out
+          Cerrar Sesión
         </button>
       </div>
     </aside>
