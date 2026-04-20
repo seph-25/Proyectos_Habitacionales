@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+coverage
+*.tsbuildinfo
 *.local
 
 # Editor directories and files
@@ -24,3 +26,9 @@ dist-ssr
 *.sw?
 .env
 .env.local
+.env.*
+!.env.example
+
+# Supabase local state
+supabase/.temp/
+supabase/.branches/
