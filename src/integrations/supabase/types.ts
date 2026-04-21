@@ -112,6 +112,135 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          id: string
+          full_name: string
+          role: string
+          created_at: string
+        }
+        Insert: {
+          id: string
+          full_name?: string
+          role?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          full_name?: string
+          role?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      prospectos: {
+        Row: {
+          id: string
+          nombre: string
+          apellidos: string
+          correo: string | null
+          telefono: string | null
+          cedula: string | null
+          proyecto_id: string | null
+          presupuesto: number | null
+          tipo_unidad_buscada: string | null
+          status: string
+          agente_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nombre: string
+          apellidos: string
+          correo?: string | null
+          telefono?: string | null
+          cedula?: string | null
+          proyecto_id?: string | null
+          presupuesto?: number | null
+          tipo_unidad_buscada?: string | null
+          status?: string
+          agente_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nombre?: string
+          apellidos?: string
+          correo?: string | null
+          telefono?: string | null
+          cedula?: string | null
+          proyecto_id?: string | null
+          presupuesto?: number | null
+          tipo_unidad_buscada?: string | null
+          status?: string
+          agente_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      prospecto_notas: {
+        Row: {
+          id: string
+          prospecto_id: string
+          contenido: string
+          autor_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          prospecto_id: string
+          contenido: string
+          autor_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          prospecto_id?: string
+          contenido?: string
+          autor_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      citas: {
+        Row: {
+          id: string
+          prospecto_id: string
+          agente_id: string | null
+          proyecto_id: string | null
+          fecha_hora: string
+          tipo: string
+          status: string
+          notas: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          prospecto_id: string
+          agente_id?: string | null
+          proyecto_id?: string | null
+          fecha_hora: string
+          tipo?: string
+          status?: string
+          notas?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          prospecto_id?: string
+          agente_id?: string | null
+          proyecto_id?: string | null
+          fecha_hora?: string
+          tipo?: string
+          status?: string
+          notas?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       status_history: {
         Row: {
           changed_at: string

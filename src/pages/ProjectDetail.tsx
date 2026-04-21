@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ImageUpload } from "@/components/catalog/ImageUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { PROJECT_STATUSES, ProjectStatus, STATUS_STYLES } from "@/lib/status";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog,
   DialogContent,
@@ -70,6 +71,7 @@ const Row = ({
 const ProjectDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
   const [history, setHistory] = useState<History[]>([]);
@@ -117,7 +119,7 @@ const ProjectDetail = () => {
         project_id: project.id,
         previous_status: project.status,
         new_status: newStatus,
-        changed_by: "Daniel Salas",
+        changed_by: profile?.full_name ?? "Sistema",
       }),
     ]);
     setSaving(false);
