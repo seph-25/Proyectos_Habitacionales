@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { ArrowLeft, Pencil, Repeat, MapPin, Calendar, Hash, Layers } from "lucide-react";
+import { ArrowLeft, Pencil, Repeat, MapPin, Calendar, Hash, Layers, Images, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Spinner } from "@/components/Spinner";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ImageUpload } from "@/components/catalog/ImageUpload";
 import { supabase } from "@/integrations/supabase/client";
 import { PROJECT_STATUSES, ProjectStatus, STATUS_STYLES } from "@/lib/status";
 import {
@@ -18,6 +19,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+
+interface ProjectImage {
+  id: string;
+  url: string;
+  caption: string | null;
+  image_type: string;
+  display_order: number;
+}
 
 interface Project {
   id: string;
@@ -64,19 +73,25 @@ const ProjectDetail = () => {
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
   const [history, setHistory] = useState<History[]>([]);
+  const [images, setImages] = useState<ProjectImage[]>([]);
   const [statusOpen, setStatusOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: p, error: pe }, { data: h }] = await Promise.all([
+    const [{ data: p, error: pe }, { data: h }, { data: imgs }] = await Promise.all([
       supabase.from("projects").select("*").eq("id", id!).maybeSingle(),
       supabase
         .from("status_history")
         .select("*")
         .eq("project_id", id!)
         .order("changed_at", { ascending: false }),
+      supabase
+        .from("project_images")
+        .select("id, url, caption, image_type, display_order")
+        .eq("project_id", id!)
+        .order("display_order", { ascending: true }),
     ]);
     if (pe || !p) {
       toast.error("Proyecto no encontrado");
@@ -85,6 +100,7 @@ const ProjectDetail = () => {
     }
     setProject(p as Project);
     setHistory((h ?? []) as History[]);
+    setImages((imgs ?? []) as ProjectImage[]);
     setLoading(false);
   }, [id, navigate]);
 
@@ -184,6 +200,27 @@ const ProjectDetail = () => {
               </p>
             </section>
           )}
+
+          {/* Galería de imágenes */}
+          <section className="rounded-lg bg-card p-6 shadow-card">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-base font-bold text-primary">
+                <Images className="h-4 w-4" />
+                Imágenes del Proyecto
+              </h2>
+              <Link
+                to={`/catalogo/${project.id}`}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-primary"
+              >
+                Ver showroom público <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <ImageUpload
+              projectId={project.id}
+              images={images}
+              onImagesChange={setImages}
+            />
+          </section>
 
           <section className="rounded-lg bg-card p-6 shadow-card">
             <div className="mb-4 flex items-center justify-between">

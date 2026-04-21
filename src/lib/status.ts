@@ -47,3 +47,43 @@ export const PROVINCES = [
 ] as const;
 
 export const PROJECT_TYPES = ["Residencial", "Condominio", "Apartamentos", "Mixto"] as const;
+
+export const AMENITIES_LIST = [
+  "Piscina",
+  "Gimnasio",
+  "Salón comunal",
+  "Área de juegos",
+  "Cancha deportiva",
+  "Parqueo visitantes",
+  "Seguridad 24 horas",
+  "Jardines",
+  "Zona de BBQ",
+  "Coworking",
+  "Spa",
+  "Restaurante",
+  "Acceso a playa",
+  "Vista al mar",
+  "Vista al valle",
+  "Senderos",
+  "Rooftop",
+  "Bici-parqueo",
+  "Áreas verdes",
+  "Marina",
+] as const;
+
+export type Amenity = (typeof AMENITIES_LIST)[number];
+
+export interface UnitType {
+  nombre: string;
+  habitaciones: number;
+  banos: number;
+  area_m2: number;
+  precio: number;
+}
+
+export interface FinancingOption {
+  banco: string;
+  tasa: number;
+  plazo_anos: number;
+  notas: string;
+}

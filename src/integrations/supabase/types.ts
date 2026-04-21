@@ -14,41 +14,100 @@ export type Database = {
   }
   public: {
     Tables: {
+      project_images: {
+        Row: {
+          id: string
+          project_id: string
+          url: string
+          caption: string | null
+          image_type: string
+          display_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          url: string
+          caption?: string | null
+          image_type?: string
+          display_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          url?: string
+          caption?: string | null
+          image_type?: string
+          display_order?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_images_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
+          address: string | null
+          amenities: string[] | null
+          area_m2_from: number | null
           canton: string
+          coordinates: string | null
           created_at: string
           description: string | null
+          financing_options: Json | null
           id: string
           name: string
+          price_from: number | null
           project_type: string | null
           province: string
           start_date: string | null
           status: string
+          unit_types: Json | null
           units: number | null
         }
         Insert: {
+          address?: string | null
+          amenities?: string[] | null
+          area_m2_from?: number | null
           canton: string
+          coordinates?: string | null
           created_at?: string
           description?: string | null
+          financing_options?: Json | null
           id?: string
           name: string
+          price_from?: number | null
           project_type?: string | null
           province: string
           start_date?: string | null
           status?: string
+          unit_types?: Json | null
           units?: number | null
         }
         Update: {
+          address?: string | null
+          amenities?: string[] | null
+          area_m2_from?: number | null
           canton?: string
+          coordinates?: string | null
           created_at?: string
           description?: string | null
+          financing_options?: Json | null
           id?: string
           name?: string
+          price_from?: number | null
           project_type?: string | null
           province?: string
           start_date?: string | null
           status?: string
+          unit_types?: Json | null
           units?: number | null
         }
         Relationships: []

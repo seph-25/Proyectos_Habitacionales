@@ -7,6 +7,8 @@ import Index from "./pages/Index";
 import Projects from "./pages/Projects";
 import ProjectForm from "./pages/ProjectForm";
 import ProjectDetail from "./pages/ProjectDetail";
+import Catalog from "./pages/Catalog";
+import CatalogShowroom from "./pages/CatalogShowroom";
 import PlaceholderPage from "./pages/PlaceholderPage";
 import NotFound from "./pages/NotFound";
 
@@ -24,7 +26,8 @@ const App = () => (
           <Route path="/proyectos/nuevo" element={<ProjectForm />} />
           <Route path="/proyectos/:id" element={<ProjectDetail />} />
           <Route path="/proyectos/:id/editar" element={<ProjectForm />} />
-          <Route path="/catalogo" element={<PlaceholderPage title="Catálogo" />} />
+          <Route path="/catalogo" element={<Catalog />} />
+          <Route path="/catalogo/:id" element={<CatalogShowroom />} />
           <Route path="/prospectos" element={<PlaceholderPage title="Prospectos" />} />
           <Route path="/citas" element={<PlaceholderPage title="Citas" />} />
           <Route path="/pipeline" element={<PlaceholderPage title="Pipeline" />} />
