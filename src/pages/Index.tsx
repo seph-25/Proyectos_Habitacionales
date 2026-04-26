@@ -7,6 +7,7 @@ import { Spinner } from "@/components/Spinner";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Project {
   id: string;
@@ -21,6 +22,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [counts, setCounts] = useState({ total: 0, construccion: 0, disponibles: 0, terminados: 0 });
+  const { profile } = useAuth();
 
   useEffect(() => {
     (async () => {
@@ -50,7 +52,7 @@ const Index = () => {
   return (
     <AppLayout title="Dashboard">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground">Bienvenido, Daniel</h1>
+        <h1 className="text-2xl font-bold text-foreground">{profile ? `Bienvenido, ${profile.full_name}` : "Invitado"}</h1>
         <p className="mt-1 text-sm text-muted-foreground">Resumen general de tus proyectos inmobiliarios.</p>
       </div>
 

@@ -26,11 +26,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+
+    console.log("Fetching profile for user ID:", userId);
+
+    const { data, error } = await supabase
       .from("profiles")
       .select("id, full_name, role")
       .eq("id", userId)
       .maybeSingle();
+    console.log("Profile data:", data);
+    console.log("Profile error:", error);
     setProfile(data as Profile | null);
   };
 
@@ -61,7 +66,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+    console.log("Error de inicio de sesión:", error);
+    console.log("Datos de inicio de sesión:", data);
     if (error) return { error: error.message };
     return { error: null };
   };
