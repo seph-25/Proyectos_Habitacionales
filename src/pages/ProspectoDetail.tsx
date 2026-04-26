@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Save, Phone, Mail, Hash, DollarSign,
-  Layers, Building2, MessageSquarePlus, Trash2, Calendar,
+  Layers, Building2, MessageSquarePlus, Trash2, Calendar, CalendarPlus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -208,9 +208,17 @@ const ProspectoDetail = () => {
               )}
             </div>
           </div>
-          <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${STATUS_COLORS[prospecto.status] ?? "bg-muted"}`}>
-            {prospecto.status}
-          </span>
+          <div className="flex items-center gap-3">
+            <Link
+              to={`/citas/nueva?prospecto_id=${prospecto.id}`}
+              className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/25"
+            >
+              <CalendarPlus className="h-3.5 w-3.5" /> Nueva Cita
+            </Link>
+            <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${STATUS_COLORS[prospecto.status] ?? "bg-muted"}`}>
+              {prospecto.status}
+            </span>
+          </div>
         </div>
       </div>
 

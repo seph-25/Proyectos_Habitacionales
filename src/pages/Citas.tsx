@@ -26,6 +26,7 @@ const TIPO_ICONS: Record<string, React.ElementType> = {
 
 interface Cita {
   id: string;
+  prospecto_id: string;
   prospecto_nombre: string;
   proyecto_nombre: string | null;
   fecha_hora: string;
@@ -46,7 +47,7 @@ const Citas = () => {
     const { data } = await supabase
       .from("citas")
       .select(`
-        id, fecha_hora, tipo, status, notas,
+        id, prospecto_id, fecha_hora, tipo, status, notas,
         prospectos(nombre, apellidos),
         projects(name)
       `)
@@ -55,6 +56,7 @@ const Citas = () => {
     setCitas(
       (data ?? []).map((c: any) => ({
         id: c.id,
+        prospecto_id: c.prospecto_id,
         prospecto_nombre: c.prospectos
           ? `${c.prospectos.nombre} ${c.prospectos.apellidos}`
           : "—",
@@ -182,7 +184,7 @@ const Citas = () => {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
-                      to={`/prospectos/${c.id}`}
+                      to={`/prospectos/${c.prospecto_id}`}
                       className="font-semibold text-primary hover:underline"
                     >
                       {c.prospecto_nombre}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -10,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 const CITA_STATUSES = ["Pendiente", "Confirmada", "Realizada", "Cancelada"] as const;
 const CITA_TIPOS = ["Visita", "Llamada", "Virtual"] as const;
 
-interface Prospecto { id: string; nombre: string; apellidos: string; }
+interface Prospecto { id: string; nombre: string; apellidos: string; proyecto_id: string | null; }
 interface Project   { id: string; name: string; }
 
 interface FormState {
@@ -43,9 +43,11 @@ const Field = ({ label, required, children }: { label: string; required?: boolea
 
 const CitaForm = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { profile } = useAuth();
   const editing = Boolean(id);
+  const preselectedProspectoId = searchParams.get("prospecto_id") ?? "";
 
   const [form, setForm] = useState<FormState>(empty);
   const [prospectos, setProspectos] = useState<Prospecto[]>([]);
@@ -56,11 +58,23 @@ const CitaForm = () => {
   useEffect(() => {
     // Cargar listas de selección
     Promise.all([
-      supabase.from("prospectos").select("id, nombre, apellidos").order("nombre"),
+      supabase.from("prospectos").select("id, nombre, apellidos, proyecto_id").order("nombre"),
       supabase.from("projects").select("id, name").order("name"),
     ]).then(([{ data: p }, { data: pr }]) => {
-      setProspectos((p ?? []) as Prospecto[]);
+      const prospectosList = (p ?? []) as Prospecto[];
+      setProspectos(prospectosList);
       setProjects((pr ?? []) as Project[]);
+
+      // Si hay prospecto pre-seleccionado (viene desde el perfil del prospecto),
+      // auto-poblar también su proyecto de interés
+      if (preselectedProspectoId && !editing) {
+        const match = prospectosList.find((x) => x.id === preselectedProspectoId);
+        setForm((prev) => ({
+          ...prev,
+          prospecto_id: preselectedProspectoId,
+          proyecto_id: match?.proyecto_id ?? "",
+        }));
+      }
     });
 
     // Si es edición, cargar datos de la cita
@@ -137,7 +151,14 @@ const CitaForm = () => {
         <Field label="Prospecto" required>
           <select
             value={form.prospecto_id}
-            onChange={(e) => setForm({ ...form, prospecto_id: e.target.value })}
+            onChange={(e) => {
+              const selected = prospectos.find((p) => p.id === e.target.value);
+              setForm({
+                ...form,
+                prospecto_id: e.target.value,
+                proyecto_id: selected?.proyecto_id ?? "",
+              });
+            }}
             className={inputCls}
           >
             <option value="">Selecciona un prospecto...</option>
