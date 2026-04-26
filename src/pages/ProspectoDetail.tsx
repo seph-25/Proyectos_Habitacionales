@@ -17,12 +17,12 @@ const PROSPECTO_STATUSES = [
 ] as const;
 
 const STATUS_COLORS: Record<string, string> = {
-  "Nuevo":       "bg-blue-100 text-blue-700",
-  "Contactado":  "bg-yellow-100 text-yellow-700",
-  "Calificado":  "bg-purple-100 text-purple-700",
-  "Negociando":  "bg-orange-100 text-orange-700",
-  "Cerrado":     "bg-green-100 text-green-700",
-  "Perdido":     "bg-red-100 text-red-700",
+  "Nuevo": "bg-blue-100 text-blue-700",
+  "Contactado": "bg-yellow-100 text-yellow-700",
+  "Calificado": "bg-purple-100 text-purple-700",
+  "Negociando": "bg-orange-100 text-orange-700",
+  "Cerrado": "bg-green-100 text-green-700",
+  "Perdido": "bg-red-100 text-red-700",
 };
 
 const fmt = (n: number) =>
@@ -139,22 +139,34 @@ const ProspectoDetail = () => {
     }).eq("id", id!);
     setSaving(false);
     if (error) { toast.error("Error al guardar cambios"); return; }
+
+    const proyecto_nombre = form.proyecto_id
+      ? (projects.find((p) => p.id === form.proyecto_id)?.name ?? null)
+      : null;
+    setProspecto({ ...form, proyecto_nombre } as Prospecto);
     toast.success("Prospecto actualizado");
-    await load();
   };
 
   const onAddNota = async () => {
     if (!nuevaNota.trim()) return;
     setSavingNota(true);
-    const { error } = await supabase.from("prospecto_notas").insert({
-      prospecto_id: id!,
-      contenido: nuevaNota.trim(),
-      autor_id: profile?.id ?? null,
-    });
+    const { data, error } = await supabase
+      .from("prospecto_notas")
+      .insert({ prospecto_id: id!, contenido: nuevaNota.trim(), autor_id: profile?.id ?? null })
+      .select("id, contenido, created_at, profiles(full_name)")
+      .single();
     setSavingNota(false);
     if (error) { toast.error("Error al agregar nota"); return; }
     setNuevaNota("");
-    await load();
+    setNotas((prev) => [
+      {
+        id: data.id,
+        contenido: data.contenido,
+        autor_nombre: (data.profiles as any)?.full_name ?? null,
+        created_at: data.created_at,
+      },
+      ...prev,
+    ]);
   };
 
   const onDeleteNota = async (notaId: string) => {
