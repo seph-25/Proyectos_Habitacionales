@@ -31,8 +31,11 @@ interface Prospecto {
   telefono: string | null;
   status: string;
   created_at: string;
+  proyecto_id: string | null;
   proyecto_nombre: string | null;
 }
+
+interface Project { id: string; name: string; }
 
 interface FormState {
   nombre: string;
@@ -41,11 +44,14 @@ interface FormState {
   telefono: string;
   cedula: string;
   status: string;
+  proyecto_id: string;
+  tipo_unidad_buscada: string;
 }
 
 const emptyForm: FormState = {
   nombre: "", apellidos: "", correo: "",
   telefono: "", cedula: "", status: "Nuevo",
+  proyecto_id: "", tipo_unidad_buscada: "",
 };
 
 const inputCls = "h-10 w-full rounded-sm border border-border bg-white px-3 text-sm outline-none transition focus:border-primary";
@@ -53,18 +59,22 @@ const inputCls = "h-10 w-full rounded-sm border border-border bg-white px-3 text
 const Prospectos = () => {
   const [loading, setLoading] = useState(true);
   const [prospectos, setProspectos] = useState<Prospecto[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("Todos");
+  const [projectFilter, setProjectFilter] = useState("Todos");
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("prospectos")
-      .select("id, nombre, apellidos, correo, telefono, status, created_at, proyecto_id, projects(name)")
-      .order("created_at", { ascending: false });
+    const [{ data }, { data: projs }] = await Promise.all([
+      supabase
+        .from("prospectos")
+        .select("id, nombre, apellidos, correo, telefono, status, created_at, proyecto_id, projects(name)")
+        .order("created_at", { ascending: false }),
+      supabase.from("projects").select("id, name").order("name"),
+    ]);
 
     setProspectos(
       (data ?? []).map((p: any) => ({
@@ -75,9 +85,11 @@ const Prospectos = () => {
         telefono: p.telefono,
         status: p.status,
         created_at: p.created_at,
+        proyecto_id: p.proyecto_id ?? null,
         proyecto_nombre: p.projects?.name ?? null,
       }))
     );
+    setProjects((projs ?? []) as Project[]);
     setLoading(false);
   };
 
@@ -91,10 +103,10 @@ const Prospectos = () => {
         p.apellidos.toLowerCase().includes(q) ||
         (p.correo ?? "").toLowerCase().includes(q) ||
         (p.telefono ?? "").includes(q);
-      const matchStatus = statusFilter === "Todos" || p.status === statusFilter;
-      return matchText && matchStatus;
+      const matchProject = projectFilter === "Todos" || p.proyecto_id === projectFilter;
+      return matchText && matchProject;
     });
-  }, [prospectos, search, statusFilter]);
+  }, [prospectos, search, projectFilter]);
 
   const onSave = async () => {
     if (!form.nombre.trim() || !form.apellidos.trim()) {
@@ -109,6 +121,8 @@ const Prospectos = () => {
       telefono: form.telefono.trim() || null,
       cedula: form.cedula.trim() || null,
       status: form.status,
+      proyecto_id: form.proyecto_id || null,
+      tipo_unidad_buscada: form.tipo_unidad_buscada.trim() || null,
     });
     setSaving(false);
     if (error) { toast.error("Error al registrar el prospecto"); return; }
@@ -150,12 +164,12 @@ const Prospectos = () => {
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
           <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-10 min-w-[160px] rounded-sm border border-border bg-white px-3 text-sm outline-none focus:border-primary"
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            className="h-10 min-w-[200px] rounded-sm border border-border bg-white px-3 text-sm outline-none focus:border-primary"
           >
-            <option value="Todos">Todos los estados</option>
-            {PROSPECTO_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+            <option value="Todos">Todos los proyectos</option>
+            {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
       </div>
@@ -268,6 +282,17 @@ const Prospectos = () => {
                   {PROSPECTO_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Proyecto de interés</label>
+              <select value={form.proyecto_id} onChange={(e) => setForm({ ...form, proyecto_id: e.target.value })} className={inputCls}>
+                <option value="">Sin asignar</option>
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tipo de propiedad buscada</label>
+              <input type="text" value={form.tipo_unidad_buscada} onChange={(e) => setForm({ ...form, tipo_unidad_buscada: e.target.value })} placeholder="Ej. Casa 3 habitaciones" className={inputCls} />
             </div>
           </div>
           <DialogFooter>

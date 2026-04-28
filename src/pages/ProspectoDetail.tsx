@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Save, Phone, Mail, Hash, DollarSign,
-  Layers, Building2, MessageSquarePlus, Trash2, Calendar,
+  Layers, Building2, MessageSquarePlus, Trash2, Calendar, CalendarPlus,
+  MapPin, Video,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -17,12 +18,25 @@ const PROSPECTO_STATUSES = [
 ] as const;
 
 const STATUS_COLORS: Record<string, string> = {
-  "Nuevo":       "bg-blue-100 text-blue-700",
-  "Contactado":  "bg-yellow-100 text-yellow-700",
-  "Calificado":  "bg-purple-100 text-purple-700",
-  "Negociando":  "bg-orange-100 text-orange-700",
-  "Cerrado":     "bg-green-100 text-green-700",
-  "Perdido":     "bg-red-100 text-red-700",
+  "Nuevo": "bg-blue-100 text-blue-700",
+  "Contactado": "bg-yellow-100 text-yellow-700",
+  "Calificado": "bg-purple-100 text-purple-700",
+  "Negociando": "bg-orange-100 text-orange-700",
+  "Cerrado": "bg-green-100 text-green-700",
+  "Perdido": "bg-red-100 text-red-700",
+};
+
+const CITA_STATUS_COLORS: Record<string, string> = {
+  "Pendiente":  "bg-yellow-100 text-yellow-700",
+  "Confirmada": "bg-blue-100 text-blue-700",
+  "Realizada":  "bg-green-100 text-green-700",
+  "Cancelada":  "bg-red-100 text-red-700",
+};
+
+const TIPO_ICONS: Record<string, React.ElementType> = {
+  "Visita":  MapPin,
+  "Llamada": Phone,
+  "Virtual": Video,
 };
 
 const fmt = (n: number) =>
@@ -53,6 +67,16 @@ interface Nota {
 
 interface Project { id: string; name: string; }
 
+interface CitaHistorial {
+  id: string;
+  fecha_hora: string;
+  tipo: string;
+  status: string;
+  notas: string | null;
+  proyecto_nombre: string | null;
+  agente_nombre: string | null;
+}
+
 const inputCls = "h-10 w-full rounded-sm border border-border bg-white px-3 text-sm outline-none transition focus:border-primary";
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div>
@@ -73,13 +97,15 @@ const ProspectoDetail = () => {
   const [saving, setSaving] = useState(false);
   const [nuevaNota, setNuevaNota] = useState("");
   const [savingNota, setSavingNota] = useState(false);
+  const [citas, setCitas] = useState<CitaHistorial[]>([]);
+  const [cancelingCitaId, setCancelingCitaId] = useState<string | null>(null);
 
   // Form state (edición inline)
   const [form, setForm] = useState<Partial<Prospecto>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: p, error: pe }, { data: n }, { data: projs }] = await Promise.all([
+    const [{ data: p, error: pe }, { data: n }, { data: projs }, { data: c }] = await Promise.all([
       supabase
         .from("prospectos")
         .select("*, projects(name)")
@@ -91,6 +117,11 @@ const ProspectoDetail = () => {
         .eq("prospecto_id", id!)
         .order("created_at", { ascending: false }),
       supabase.from("projects").select("id, name").order("name"),
+      supabase
+        .from("citas")
+        .select("id, fecha_hora, tipo, status, notas, projects(name), profiles(full_name)")
+        .eq("prospecto_id", id!)
+        .order("fecha_hora", { ascending: false }),
     ]);
 
     if (pe || !p) {
@@ -115,6 +146,17 @@ const ProspectoDetail = () => {
       }))
     );
     setProjects((projs ?? []) as Project[]);
+    setCitas(
+      (c ?? []).map((cita: any) => ({
+        id: cita.id,
+        fecha_hora: cita.fecha_hora,
+        tipo: cita.tipo,
+        status: cita.status,
+        notas: cita.notas,
+        proyecto_nombre: cita.projects?.name ?? null,
+        agente_nombre: cita.profiles?.full_name ?? null,
+      }))
+    );
     setLoading(false);
   }, [id, navigate]);
 
@@ -139,28 +181,54 @@ const ProspectoDetail = () => {
     }).eq("id", id!);
     setSaving(false);
     if (error) { toast.error("Error al guardar cambios"); return; }
+
+    const proyecto_nombre = form.proyecto_id
+      ? (projects.find((p) => p.id === form.proyecto_id)?.name ?? null)
+      : null;
+    setProspecto({ ...form, proyecto_nombre } as Prospecto);
     toast.success("Prospecto actualizado");
-    await load();
   };
 
   const onAddNota = async () => {
     if (!nuevaNota.trim()) return;
     setSavingNota(true);
-    const { error } = await supabase.from("prospecto_notas").insert({
-      prospecto_id: id!,
-      contenido: nuevaNota.trim(),
-      autor_id: profile?.id ?? null,
-    });
+    const { data, error } = await supabase
+      .from("prospecto_notas")
+      .insert({ prospecto_id: id!, contenido: nuevaNota.trim(), autor_id: profile?.id ?? null })
+      .select("id, contenido, created_at, profiles(full_name)")
+      .single();
     setSavingNota(false);
     if (error) { toast.error("Error al agregar nota"); return; }
     setNuevaNota("");
-    await load();
+    setNotas((prev) => [
+      {
+        id: data.id,
+        contenido: data.contenido,
+        autor_nombre: (data.profiles as any)?.full_name ?? null,
+        created_at: data.created_at,
+      },
+      ...prev,
+    ]);
   };
 
   const onDeleteNota = async (notaId: string) => {
     const { error } = await supabase.from("prospecto_notas").delete().eq("id", notaId);
     if (error) { toast.error("Error al eliminar nota"); return; }
     setNotas((prev) => prev.filter((n) => n.id !== notaId));
+  };
+
+  const onCancelCita = async (citaId: string) => {
+    setCancelingCitaId(citaId);
+    const { error } = await supabase
+      .from("citas")
+      .update({ status: "Cancelada" })
+      .eq("id", citaId);
+    setCancelingCitaId(null);
+    if (error) { toast.error("Error al cancelar la cita"); return; }
+    toast.success("Cita cancelada");
+    setCitas((prev) =>
+      prev.map((c) => c.id === citaId ? { ...c, status: "Cancelada" } : c)
+    );
   };
 
   if (loading || !prospecto) {
@@ -196,9 +264,17 @@ const ProspectoDetail = () => {
               )}
             </div>
           </div>
-          <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${STATUS_COLORS[prospecto.status] ?? "bg-muted"}`}>
-            {prospecto.status}
-          </span>
+          <div className="flex items-center gap-3">
+            <Link
+              to={`/citas/nueva?prospecto_id=${prospecto.id}`}
+              className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/25"
+            >
+              <CalendarPlus className="h-3.5 w-3.5" /> Nueva Cita
+            </Link>
+            <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${STATUS_COLORS[prospecto.status] ?? "bg-muted"}`}>
+              {prospecto.status}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -372,6 +448,94 @@ const ProspectoDetail = () => {
           </section>
         </div>
       </div>
+
+      {/* Historial de Citas */}
+      <section className="mt-6 rounded-xl bg-card p-6 shadow-card">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-base font-bold text-primary">
+            <Calendar className="h-4 w-4" />
+            Historial de Citas
+          </h2>
+          <span className="text-xs text-muted-foreground">{citas.length} cita(s)</span>
+        </div>
+
+        {citas.length === 0 ? (
+          <p className="py-6 text-center text-sm italic text-muted-foreground">
+            Sin citas registradas
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {citas.map((cita) => {
+              const TipoIcon = TIPO_ICONS[cita.tipo] ?? Calendar;
+              const fecha = new Date(cita.fecha_hora);
+              return (
+                <div
+                  key={cita.id}
+                  className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-secondary/20 p-4 transition hover:bg-secondary/30"
+                >
+                  {/* Fecha */}
+                  <div className="flex w-16 shrink-0 flex-col items-center rounded-lg bg-primary/10 py-1.5 text-center">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                      {format(fecha, "MMM", { locale: es })}
+                    </span>
+                    <span className="text-xl font-extrabold leading-tight text-primary">
+                      {format(fecha, "dd")}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {format(fecha, "HH:mm")}
+                    </span>
+                  </div>
+
+                  {/* Info */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                        <TipoIcon className="h-3.5 w-3.5" />
+                        {cita.tipo}
+                      </div>
+                      {cita.proyecto_nombre && (
+                        <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
+                          {cita.proyecto_nombre}
+                        </span>
+                      )}
+                      {cita.agente_nombre && (
+                        <span className="text-[11px] text-muted-foreground">
+                          Agente: {cita.agente_nombre}
+                        </span>
+                      )}
+                    </div>
+                    {cita.notas && (
+                      <p className="mt-1 text-xs text-muted-foreground">{cita.notas}</p>
+                    )}
+                  </div>
+
+                  {/* Status + Acciones */}
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${CITA_STATUS_COLORS[cita.status] ?? "bg-muted"}`}>
+                      {cita.status}
+                    </span>
+                    <Link
+                      to={`/citas/${cita.id}/editar`}
+                      className="rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-secondary"
+                    >
+                      Editar
+                    </Link>
+                    {cita.status !== "Cancelada" && cita.status !== "Realizada" && (
+                      <button
+                        onClick={() => onCancelCita(cita.id)}
+                        disabled={cancelingCitaId === cita.id}
+                        className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+                      >
+                        {cancelingCitaId === cita.id ? "Cancelando..." : "Cancelar"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </AppLayout>
   );
 };
