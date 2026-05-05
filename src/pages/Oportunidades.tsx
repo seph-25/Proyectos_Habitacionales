@@ -6,6 +6,7 @@ import { es } from "date-fns/locale";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Spinner } from "@/components/Spinner";
 import { supabase } from "@/integrations/supabase/client";
+import { Pipeline } from "./Pipeline";
 
 const ETAPAS = ["Nueva", "Contactado", "Calificado", "Propuesta", "Negociación"] as const;
 
@@ -189,6 +190,9 @@ const Oportunidades = () => {
           ))}
         </div>
       )}
+      <div className="mt-10">
+      <Pipeline />
+      </div>
     </AppLayout>
   );
 };

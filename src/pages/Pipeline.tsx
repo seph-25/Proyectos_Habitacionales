@@ -5,22 +5,20 @@ import { Spinner } from "@/components/Spinner";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInHours, differenceInDays, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { keyof } from "zod/v4";
-import { isTerminalStatus } from "@/lib/stageUtils";
+import { DISCARD_REASONS, isTerminalStatus } from "@/lib/stageUtils";
+import { useAuth } from "@/contexts/AuthContext";
 
-interface Prospecto {
+interface Oportunidad {
   id: string;
-  nombre: string;
-  apellidos: string;
-  status: string;
+  etapa: string;
+  prospecto_id: string;
   proyecto_id: string | null;
+  prospecto_nombre: string | null;
+  prospecto_apellidos: string | null;
   proyecto_nombre: string | null;
   updated_at: string;
-  fecha_cierre: string | null;
-  razon_descarte: string | null;
+  motivo_descarte: string | null;
 }
-
-
 
 interface StaleTimeEntry {
   value: number;
@@ -28,24 +26,32 @@ interface StaleTimeEntry {
   label: string;
 }
 
-const PIPELINE_STAGES = [
-  "Nuevo",
+const KANBAN_STAGES = [
+  "Nueva",
   "Contactado",
   "Calificado",
-  "Negociando",
-  "Cerrado",
-  "Perdido",
+  "Propuesta",
+  "Negociación",
 ] as const;
 
-type PIPELINE_STAGES_TYPE = typeof PIPELINE_STAGES[number]
+type KANBAN_STAGES_TYPE = typeof KANBAN_STAGES[number];
 
-const STAGE_COLORS: Record<PIPELINE_STAGES_TYPE, { bg: string; border: string; header: string; text: string }> = {
-  "Nuevo":   { bg: "bg-blue-50",    border: "border-blue-200",    header: "bg-blue-600",    text: "text-blue-700" },
-  "Contactado": { bg: "bg-indigo-50",   border: "border-indigo-200",   header: "bg-indigo-600",  text: "text-indigo-700" },
-  "Calificado":  { bg: "bg-amber-50",    border: "border-amber-200",    header: "bg-amber-600",   text: "text-amber-700" },
-  "Negociando":{ bg: "bg-purple-50",   border: "border-purple-200",   header: "bg-purple-600",  text: "text-purple-700" },
-  "Cerrado":      { bg: "bg-green-50",    border: "border-green-200",    header: "bg-green-600",  text: "text-green-700" },
-  "Perdido":      { bg: "bg-green-50",    border: "border-green-200",    header: "bg-green-600",  text: "text-green-700" },
+const STAGE_COLORS: Record<KANBAN_STAGES_TYPE, { bg: string; border: string; header: string; text: string }> = {
+  "Nueva":       { bg: "bg-blue-50",    border: "border-blue-200",    header: "bg-blue-600",    text: "text-blue-700" },
+  "Contactado":  { bg: "bg-indigo-50",  border: "border-indigo-200",   header: "bg-indigo-600",  text: "text-indigo-700" },
+  "Calificado":  { bg: "bg-amber-50",   border: "border-amber-200",    header: "bg-amber-600",   text: "text-amber-700" },
+  "Propuesta":   { bg: "bg-teal-50",    border: "border-teal-200",     header: "bg-teal-600",    text: "text-teal-700" },
+  "Negociación": { bg: "bg-purple-50",  border: "border-purple-200",   header: "bg-purple-600",  text: "text-purple-700" },
+};
+
+const STAGE_ORDER: Record<string, number> = {
+  "Nueva": 0,
+  "Contactado": 1,
+  "Calificado": 2,
+  "Propuesta": 3,
+  "Negociación": 4,
+  "Cerrada": 5,
+  "Descartada": 5,
 };
 
 function computeStaleTime(changedAt: string): StaleTimeEntry {
@@ -69,59 +75,83 @@ function formatStaleTimeTooltip(changedAt: string): string {
 }
 
 interface KanbanCardProps {
-  prospecto: Prospecto;
+  oportunidad: Oportunidad;
   staleTime: StaleTimeEntry | null;
+  onAdvance: (id: string, etapa: string) => void;
+  onClose: (id: string) => void;
+  onDiscard: (id: string, motivo: string) => void;
 }
 
-const KanbanCard = ({ prospecto, staleTime }: KanbanCardProps) => {
-  const colors = STAGE_COLORS[prospecto.status] ?? STAGE_COLORS["Prospección"];
-  const isClosed = prospecto.status === "Cerrado";
-  const isLost = prospecto.status === "Perdido";
-  const isTerminal = isTerminalStatus(prospecto.status);
+const KanbanCard = ({ oportunidad, staleTime, onAdvance, onClose, onDiscard }: KanbanCardProps) => {
+  const colors = STAGE_COLORS[oportunidad.etapa as KANBAN_STAGES_TYPE] ?? STAGE_COLORS["Nueva"];
+  const isTerminal = isTerminalStatus(oportunidad.etapa);
 
   return (
-    <Link
-      to={`/prospectos/${prospecto.id}`}
-      className={`block rounded-lg border ${colors.bg} ${colors.border} p-4 shadow-sm transition-all duration-150 hover:shadow-md hover:scale-[1.02] hover:-translate-y-0.5`}
-    >
-      <p className="font-semibold text-foreground">
-        {prospecto.nombre} {prospecto.apellidos}
-      </p>
+    <div className={`rounded-lg border ${colors.bg} ${colors.border} p-4 shadow-sm transition-all duration-150 hover:shadow-md`}>
+      <Link
+        to={`/prospectos/${oportunidad.prospecto_id}`}
+        className="block font-semibold text-foreground hover:underline"
+      >
+        {oportunidad.prospecto_nombre} {oportunidad.prospecto_apellidos}
+      </Link>
       <p className="mt-1 text-xs text-muted-foreground">
-        {prospecto.proyecto_nombre ?? "Sin proyecto asignado"}
+        {oportunidad.proyecto_nombre ?? "Sin proyecto asignado"}
       </p>
-      {isTerminal && isLost && prospecto.razon_descarte && (
+      {oportunidad.etapa === "Descartada" && oportunidad.motivo_descarte && (
         <div className="mt-2 rounded bg-red-100 px-2 py-1 text-[10px] font-medium text-red-700">
-          {prospecto.razon_descarte}
-        </div>
-      )}
-      {isTerminal && isClosed && prospecto.fecha_cierre && (
-        <div className="mt-2 rounded bg-green-100 px-2 py-1 text-[10px] font-medium text-green-700">
-          Cerrado el {new Date(prospecto.fecha_cierre).toLocaleDateString("es-CR")}
+          {oportunidad.motivo_descarte}
         </div>
       )}
       {staleTime && !isTerminal && (
         <div className="mt-3 flex items-center justify-between">
           <span
             className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${colors.text}`}
-            title={formatStaleTimeTooltip(prospecto.updated_at)}
+            title={formatStaleTimeTooltip(oportunidad.updated_at)}
           >
             {staleTime.label} en etapa
           </span>
         </div>
       )}
-    </Link>
+      {!isTerminal && (
+        <div className="mt-3 flex gap-1">
+          <button
+            onClick={() => onAdvance(oportunidad.id, oportunidad.etapa)}
+            className="flex-1 rounded bg-primary px-2 py-1 text-[10px] font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Avanzar
+          </button>
+          <button
+            onClick={() => onClose(oportunidad.id)}
+            className="flex-1 rounded bg-green-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-green-700"
+          >
+            Cerrar
+          </button>
+          <button
+            onClick={() => {
+              const motivo = window.prompt(`Motivo de descarte:\n${DISCARD_REASONS.join(", ")}`);
+              if (motivo) onDiscard(oportunidad.id, motivo);
+            }}
+            className="flex-1 rounded bg-red-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-red-700"
+          >
+            Descartar
+          </button>
+        </div>
+      )}
+    </div>
   );
 };
 
 interface KanbanColumnProps {
   title: string;
-  prospectos: Prospecto[];
+  oportunidades: Oportunidad[];
   staleTimes: Record<string, StaleTimeEntry>;
+  onAdvance: (id: string, etapa: string) => void;
+  onClose: (id: string) => void;
+  onDiscard: (id: string, motivo: string) => void;
 }
 
-const KanbanColumn = ({ title, prospectos, staleTimes }: KanbanColumnProps) => {
-  const colors = STAGE_COLORS[title] ?? STAGE_COLORS["Prospección"];
+const KanbanColumn = ({ title, oportunidades, staleTimes, onAdvance, onClose, onDiscard }: KanbanColumnProps) => {
+  const colors = STAGE_COLORS[title as KANBAN_STAGES_TYPE] ?? STAGE_COLORS["Nueva"];
 
   return (
     <div className="flex w-72 shrink-0 flex-col rounded-xl bg-secondary/30 shadow-sm">
@@ -129,19 +159,26 @@ const KanbanColumn = ({ title, prospectos, staleTimes }: KanbanColumnProps) => {
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-white">{title}</h3>
           <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-xs font-bold text-white">
-            {prospectos.length}
+            {oportunidades.length}
           </span>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: "calc(100vh - 220px)" }}>
         <div className="space-y-2">
-          {prospectos.length === 0 ? (
+          {oportunidades.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border bg-card p-6 text-center">
               <p className="text-xs text-muted-foreground">Sin oportunidades</p>
             </div>
           ) : (
-            prospectos.map((p) => (
-              <KanbanCard key={p.id} prospecto={p} staleTime={staleTimes[p.id] ?? null} />
+            oportunidades.map((o) => (
+              <KanbanCard
+                key={o.id}
+                oportunidad={o}
+                staleTime={staleTimes[o.id] ?? null}
+                onAdvance={onAdvance}
+                onClose={onClose}
+                onDiscard={onDiscard}
+              />
             ))
           )}
         </div>
@@ -152,75 +189,161 @@ const KanbanColumn = ({ title, prospectos, staleTimes }: KanbanColumnProps) => {
 
 const Pipeline = () => {
   const [loading, setLoading] = useState(true);
-  const [prospectos, setProspectos] = useState<Prospecto[]>([]);
+  const [oportunidades, setOportunidades] = useState<Oportunidad[]>([]);
   const [staleTimes, setStaleTimes] = useState<Record<string, StaleTimeEntry>>({});
+  const { profile } = useAuth();
 
   const load = async () => {
     setLoading(true);
     const { data } = await supabase
-      .from("prospectos")
-      .select("id, nombre, apellidos, status, proyecto_id, updated_at, fecha_cierre, razon_descarte, projects(name)")
+      .from("oportunidades" as any)
+      .select(`
+        id,
+        etapa,
+        prospecto_id,
+        proyecto_id,
+        updated_at,
+        motivo_descarte,
+        prospectos(nombre, apellidos),
+        projects(name)
+      `)
+      .not("etapa", "in", '("Cerrada","Descartada")')
       .order("updated_at", { ascending: false });
 
-      
-      const mapped: Prospecto[] = (data ?? []).map((p: any) => ({
-        id: p.id,
-        nombre: p.nombre,
-        apellidos: p.apellidos,
-        status: p.status,
-        proyecto_id: p.proyecto_id ?? null,
-        proyecto_nombre: p.projects?.name ?? null,
-        updated_at: p.updated_at,
-        fecha_cierre: p.fecha_cierre ?? null,
-        razon_descarte: p.razon_descarte ?? null,
-      }));
-    
+    const mapped: Oportunidad[] = (data ?? []).map((o: any) => ({
+      id: o.id,
+      etapa: o.etapa,
+      prospecto_id: o.prospecto_id,
+      proyecto_id: o.proyecto_id ?? null,
+      prospecto_nombre: o.prospectos?.nombre ?? null,
+      prospecto_apellidos: o.prospectos?.apellidos ?? null,
+      proyecto_nombre: o.projects?.name ?? null,
+      updated_at: o.updated_at,
+      motivo_descarte: o.motivo_descarte ?? null,
+    }));
+
     const times: Record<string, StaleTimeEntry> = {};
-    for (const p of mapped) {
-      times[p.id] = computeStaleTime(p.updated_at);
+    for (const o of mapped) {
+      times[o.id] = computeStaleTime(o.updated_at);
     }
-    
-    setProspectos(mapped);
+
+    setOportunidades(mapped);
     setStaleTimes(times);
     setLoading(false);
   };
-  
+
   useEffect(() => { load(); }, []);
-  
+
+  const advanceStage = async (id: string, currentEtapa: string) => {
+    const nextIndex = STAGE_ORDER[currentEtapa] + 1;
+    const stageEntries = Object.entries(STAGE_ORDER);
+    const nextStage = stageEntries.find(([, idx]) => idx === nextIndex)?.[0];
+
+    if (!nextStage || nextStage === "Cerrada" || nextStage === "Descartada") {
+      alert("No se puede avanzar más desde esta etapa");
+      return;
+    }
+
+    const { error } = await (supabase as any)
+      .from("oportunidades_historial")
+      .insert({
+        oportunidad_id: id,
+        etapa_anterior: currentEtapa,
+        etapa_nueva: nextStage,
+        changed_by: profile.full_name || "Unknown",
+      });
+
+    if (error) {
+      alert("Error al registrar avance: " + error.message);
+      return;
+    }
+
+    await (supabase as any).from("oportunidades").update({ etapa: nextStage }).eq("id", id);
+    load();
+  };
+
+  const closeOpportunity = async (id: string) => {
+    if (!confirm("¿Cerrar esta oportunidad como Ganada?")) return;
+
+    const { error } = await (supabase as any)
+      .from("oportunidades_historial")
+      .insert({
+        oportunidad_id: id,
+        etapa_anterior: "Negociación",
+        etapa_nueva: "Cerrada",
+        changed_by: "Usuario",
+      });
+
+    if (error) {
+      alert("Error al registrar cierre: " + error.message);
+      return;
+    }
+
+    await (supabase as any).from("oportunidades").update({ etapa: "Cerrada" }).eq("id", id);
+    load();
+  };
+
+  const discardOpportunity = async (id: string, motivo: string) => {
+    const { error } = await (supabase as any)
+      .from("oportunidades_historial")
+      .insert({
+        oportunidad_id: id,
+        etapa_anterior: "Negociación",
+        etapa_nueva: "Descartada",
+        changed_by: "Usuario",
+        notas: motivo,
+      });
+
+    if (error) {
+      alert("Error al registrar descarte: " + error.message);
+      return;
+    }
+
+    await (supabase as any)
+      .from("oportunidades")
+      .update({ etapa: "Descartada", motivo_descarte: motivo })
+      .eq("id", id);
+    load();
+  };
+
   const byStage = useMemo(() => {
-    console.log(prospectos)
-    const map: Record<string, Prospecto[]> = {};
-    for (const stage of PIPELINE_STAGES) {
-      map[stage] = prospectos.filter((p) => p.status === stage);
+    const map: Record<string, Oportunidad[]> = {};
+    for (const stage of KANBAN_STAGES) {
+      map[stage] = oportunidades.filter((o) => o.etapa === stage);
     }
     return map;
-  }, [prospectos]);
-  
-  return (
-    <AppLayout title="Pipeline">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Pipeline de Ventas</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {prospectos.length} oportunidad(es) en el pipeline
-        </p>
-      </div>
+  }, [oportunidades]);
 
+  return (
+    // <AppLayout title="Pipeline">
+      // <div className="mb-6">
+      //   <h1 className="text-2xl font-bold text-foreground">Pipeline de Ventas</h1>
+      //   <p className="mt-1 text-sm text-muted-foreground">
+      //     {oportunidades.length} oportunidad(es) en el pipeline
+      //   </p>
+      // </div>
+
+      <div>
       {loading ? (
         <Spinner />
       ) : (
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {PIPELINE_STAGES.map((stage) => (
+          {KANBAN_STAGES.map((stage) => (
             <KanbanColumn
               key={stage}
               title={stage}
-              prospectos={byStage[stage] ?? []}
+              oportunidades={byStage[stage] ?? []}
               staleTimes={staleTimes}
+              onAdvance={advanceStage}
+              onClose={closeOpportunity}
+              onDiscard={discardOpportunity}
             />
           ))}
         </div>
       )}
-    </AppLayout>
+      </div>
+    // </AppLayout>
   );
 };
 
-export default Pipeline;
+export{ Pipeline};
