@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import {
   ArrowLeft, Save, Phone, Mail, Hash, DollarSign,
   Layers, Building2, MessageSquarePlus, Trash2, Calendar, CalendarPlus,
-  MapPin, Video,
+  MapPin, Video, ArrowRight,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -12,6 +12,15 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Spinner } from "@/components/Spinner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { isTerminalStatus, getNextStage, canAdvance } from "@/lib/stageUtils";
 
 const PROSPECTO_STATUSES = [
   "Nuevo", "Contactado", "Calificado", "Negociando", "Cerrado", "Perdido",
@@ -99,6 +108,8 @@ const ProspectoDetail = () => {
   const [savingNota, setSavingNota] = useState(false);
   const [citas, setCitas] = useState<CitaHistorial[]>([]);
   const [cancelingCitaId, setCancelingCitaId] = useState<string | null>(null);
+  const [advanceOpen, setAdvanceOpen] = useState(false);
+  const [savingAdvance, setSavingAdvance] = useState(false);
 
   // Form state (edición inline)
   const [form, setForm] = useState<Partial<Prospecto>>({});
@@ -231,6 +242,23 @@ const ProspectoDetail = () => {
     );
   };
 
+  const advanceStage = async () => {
+    if (!prospecto) return;
+    setSavingAdvance(true);
+    const { error } = await supabase.rpc("advance_prospecto_stage", {
+      p_prospecto_id: id,
+      p_changed_by: profile?.id ?? "Sistema",
+    });
+    setSavingAdvance(false);
+    if (error) {
+      toast.error("No se pudo avanzar la etapa");
+      return;
+    }
+    setAdvanceOpen(false);
+    toast.success("Etapa avanzada exitosamente");
+    load();
+  };
+
   if (loading || !prospecto) {
     return <AppLayout title="Prospecto"><Spinner /></AppLayout>;
   }
@@ -274,6 +302,14 @@ const ProspectoDetail = () => {
             <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${STATUS_COLORS[prospecto.status] ?? "bg-muted"}`}>
               {prospecto.status}
             </span>
+            {!isTerminalStatus(prospecto.status) && (
+              <button
+                onClick={() => setAdvanceOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/25"
+              >
+                <ArrowRight className="h-3.5 w-3.5" /> Avanzar Etapa
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -536,6 +572,33 @@ const ProspectoDetail = () => {
           </div>
         )}
       </section>
+
+      {/* Advance Stage Dialog */}
+      <Dialog open={advanceOpen} onOpenChange={setAdvanceOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Avanzar Etapa</DialogTitle>
+            <DialogDescription>
+              El prospecto pasar&#225; de <strong>{prospecto.status}</strong> a <strong>{getNextStage(prospecto.status) ?? "N/A"}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              onClick={() => setAdvanceOpen(false)}
+              className="rounded-md border border-border px-4 py-2 text-sm font-semibold transition hover:bg-secondary"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={advanceStage}
+              disabled={savingAdvance}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary/90 disabled:opacity-60"
+            >
+              {savingAdvance ? "Avanzando..." : "Confirmar"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 };

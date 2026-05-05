@@ -276,12 +276,64 @@ export type Database = {
           },
         ]
       }
+      prospecto_status_history: {
+        Row: {
+          id: string
+          prospecto_id: string
+          etapa_anterior: string | null
+          etapa_nueva: string
+          fecha: string
+          hora: string
+          usuario_id: string
+        }
+        Insert: {
+          id?: string
+          prospecto_id: string
+          etapa_anterior?: string | null
+          etapa_nueva: string
+          fecha?: string
+          hora?: string
+          usuario_id?: string
+        }
+        Update: {
+          id?: string
+          prospecto_id?: string
+          etapa_anterior?: string | null
+          etapa_nueva?: string
+          fecha?: string
+          hora?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospecto_status_history_prospecto_id_fkey"
+            columns: ["prospecto_id"]
+            isOneToOne: false
+            referencedRelation: "prospectos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      advance_prospecto_stage: {
+        Args: {
+          p_prospecto_id: string;
+          p_changed_by: string;
+        };
+        Returns: {
+          id: string;
+          prospecto_id: string;
+          etapa_anterior: string | null;
+          etapa_nueva: string;
+          fecha: string;
+          hora: string;
+          usuario_id: string;
+        };
+      };
     }
     Enums: {
       [_ in never]: never
