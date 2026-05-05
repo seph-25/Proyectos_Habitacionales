@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Building2, BookOpen, Users,
-  Calendar, KanbanSquare, BarChart2, LogOut, X,
+  Calendar, TrendingUp, BarChart2, LogOut, X,
   UserCircle, LogIn,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ const NAV_PRIVATE = [
   { to: "/catalogo",  label: "Catálogo",   icon: BookOpen },
   { to: "/prospectos",label: "Prospectos", icon: Users },
   { to: "/citas",     label: "Citas",      icon: Calendar },
-  { to: "/pipeline",  label: "Pipeline",   icon: KanbanSquare },
+  { to: "/oportunidades", label: "Pipeline", icon: TrendingUp },
   { to: "/reportes",  label: "Reportes",   icon: BarChart2 },
 ];
 
