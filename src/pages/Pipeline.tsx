@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { differenceInHours, differenceInDays, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { keyof } from "zod/v4";
+import { isTerminalStatus } from "@/lib/stageUtils";
 
 interface Prospecto {
   id: string;
@@ -15,6 +16,8 @@ interface Prospecto {
   proyecto_id: string | null;
   proyecto_nombre: string | null;
   updated_at: string;
+  fecha_cierre: string | null;
+  razon_descarte: string | null;
 }
 
 
@@ -72,6 +75,9 @@ interface KanbanCardProps {
 
 const KanbanCard = ({ prospecto, staleTime }: KanbanCardProps) => {
   const colors = STAGE_COLORS[prospecto.status] ?? STAGE_COLORS["Prospección"];
+  const isClosed = prospecto.status === "Cerrado";
+  const isLost = prospecto.status === "Perdido";
+  const isTerminal = isTerminalStatus(prospecto.status);
 
   return (
     <Link
@@ -84,7 +90,17 @@ const KanbanCard = ({ prospecto, staleTime }: KanbanCardProps) => {
       <p className="mt-1 text-xs text-muted-foreground">
         {prospecto.proyecto_nombre ?? "Sin proyecto asignado"}
       </p>
-      {staleTime && (
+      {isTerminal && isLost && prospecto.razon_descarte && (
+        <div className="mt-2 rounded bg-red-100 px-2 py-1 text-[10px] font-medium text-red-700">
+          {prospecto.razon_descarte}
+        </div>
+      )}
+      {isTerminal && isClosed && prospecto.fecha_cierre && (
+        <div className="mt-2 rounded bg-green-100 px-2 py-1 text-[10px] font-medium text-green-700">
+          Cerrado el {new Date(prospecto.fecha_cierre).toLocaleDateString("es-CR")}
+        </div>
+      )}
+      {staleTime && !isTerminal && (
         <div className="mt-3 flex items-center justify-between">
           <span
             className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${colors.text}`}
@@ -143,7 +159,7 @@ const Pipeline = () => {
     setLoading(true);
     const { data } = await supabase
       .from("prospectos")
-      .select("id, nombre, apellidos, status, proyecto_id, updated_at, projects(name)")
+      .select("id, nombre, apellidos, status, proyecto_id, updated_at, fecha_cierre, razon_descarte, projects(name)")
       .order("updated_at", { ascending: false });
 
       
@@ -153,9 +169,11 @@ const Pipeline = () => {
         apellidos: p.apellidos,
         status: p.status,
         proyecto_id: p.proyecto_id ?? null,
-      proyecto_nombre: p.projects?.name ?? null,
-      updated_at: p.updated_at,
-    }));
+        proyecto_nombre: p.projects?.name ?? null,
+        updated_at: p.updated_at,
+        fecha_cierre: p.fecha_cierre ?? null,
+        razon_descarte: p.razon_descarte ?? null,
+      }));
     
     const times: Record<string, StaleTimeEntry> = {};
     for (const p of mapped) {
