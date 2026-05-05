@@ -51,3 +51,14 @@ export function getAdvanceInfo(prospectoStatus: string): {
     currentStage: prospectoStatus,
   };
 }
+
+// Discard reasons for lost opportunities
+export const DISCARD_REASONS = [
+  "Sin interés",
+  "Precio fuera de rango",
+  "Compró con otra compañía",
+  "Sin capacidad de pago",
+  "Otro",
+] as const;
+
+export type DiscardReason = typeof DISCARD_REASONS[number];
