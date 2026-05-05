@@ -20,7 +20,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { isTerminalStatus, getNextStage, canAdvance } from "@/lib/stageUtils";
+import { isTerminalStatus, getNextStage, canAdvance, DISCARD_REASONS, type DiscardReason } from "@/lib/stageUtils";
 
 const PROSPECTO_STATUSES = [
   "Nuevo", "Contactado", "Calificado", "Negociando", "Cerrado", "Perdido",
@@ -110,6 +110,10 @@ const ProspectoDetail = () => {
   const [cancelingCitaId, setCancelingCitaId] = useState<string | null>(null);
   const [advanceOpen, setAdvanceOpen] = useState(false);
   const [savingAdvance, setSavingAdvance] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
+  const [closeResult, setCloseResult] = useState<"Cerrado" | "Perdido" | null>(null);
+  const [discardReason, setDiscardReason] = useState<DiscardReason | "">("");
+  const [savingClose, setSavingClose] = useState(false);
 
   // Form state (edición inline)
   const [form, setForm] = useState<Partial<Prospecto>>({});
@@ -259,6 +263,29 @@ const ProspectoDetail = () => {
     load();
   };
 
+  const onCloseProspecto = async () => {
+    if (!prospecto || !closeResult) return;
+    if (closeResult === "Perdido" && !discardReason) {
+      toast.error("Selecciona un motivo de descarte");
+      return;
+    }
+    setSavingClose(true);
+    const { error } = await (supabase.rpc as any)("close_prospecto", {
+      p_prospecto_id: id,
+      p_result: closeResult,
+      p_razon: closeResult === "Perdido" ? discardReason : null,
+      p_changed_by: profile?.id ?? "Sistema",
+    });
+    setSavingClose(false);
+    if (error) {
+      toast.error("No se pudo cerrar el prospecto");
+      return;
+    }
+    setCloseOpen(false);
+    toast.success(closeResult === "Cerrado" ? "Prospecto ganado" : "Prospecto descartado");
+    load();
+  };
+
   if (loading || !prospecto) {
     return <AppLayout title="Prospecto"><Spinner /></AppLayout>;
   }
@@ -303,12 +330,20 @@ const ProspectoDetail = () => {
               {prospecto.status}
             </span>
             {!isTerminalStatus(prospecto.status) && (
-              <button
-                onClick={() => setAdvanceOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/25"
-              >
-                <ArrowRight className="h-3.5 w-3.5" /> Avanzar Etapa
-              </button>
+              <>
+                <button
+                  onClick={() => setCloseOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-green-600/90"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" /> Cerrar
+                </button>
+                <button
+                  onClick={() => setAdvanceOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-white/15 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/25"
+                >
+                  <ArrowRight className="h-3.5 w-3.5" /> Avanzar Etapa
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -572,6 +607,76 @@ const ProspectoDetail = () => {
           </div>
         )}
       </section>
+
+      {/* Close Prospecto Dialog */}
+      <Dialog open={closeOpen} onOpenChange={setCloseOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cerrar Prospecto</DialogTitle>
+            <DialogDescription>
+              ¿Cómo desea cerrar este prospecto?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => { setCloseResult("Cerrado"); setDiscardReason(""); }}
+                className={`rounded-lg border-2 p-4 text-center transition ${
+                  closeResult === "Cerrado"
+                    ? "border-green-500 bg-green-50"
+                    : "border-border hover:border-green-300"
+                }`}
+              >
+                <div className="text-2xl">🎉</div>
+                <div className="mt-2 font-bold text-green-700">Cerrado (Ganado)</div>
+                <div className="mt-1 text-xs text-muted-foreground">El cliente compró</div>
+              </button>
+              <button
+                onClick={() => { setCloseResult("Perdido"); }}
+                className={`rounded-lg border-2 p-4 text-center transition ${
+                  closeResult === "Perdido"
+                    ? "border-red-500 bg-red-50"
+                    : "border-border hover:border-red-300"
+                }`}
+              >
+                <div className="text-2xl">❌</div>
+                <div className="mt-2 font-bold text-red-700">Perdido (Descartado)</div>
+                <div className="mt-1 text-xs text-muted-foreground">No se concretó</div>
+              </button>
+            </div>
+            {closeResult === "Perdido" && (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Motivo de descarte</label>
+                <select
+                  value={discardReason}
+                  onChange={(e) => setDiscardReason(e.target.value as DiscardReason)}
+                  className={inputCls}
+                >
+                  <option value="">Seleccionar motivo...</option>
+                  {DISCARD_REASONS.map((reason) => (
+                    <option key={reason} value={reason}>{reason}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <button
+              onClick={() => { setCloseOpen(false); setCloseResult(null); setDiscardReason(""); }}
+              className="rounded-md border border-border px-4 py-2 text-sm font-semibold transition hover:bg-secondary"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={onCloseProspecto}
+              disabled={savingClose || !closeResult || (closeResult === "Perdido" && !discardReason)}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary/90 disabled:opacity-60"
+            >
+              {savingClose ? "Cerrando..." : "Confirmar"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Advance Stage Dialog */}
       <Dialog open={advanceOpen} onOpenChange={setAdvanceOpen}>
