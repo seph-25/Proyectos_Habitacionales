@@ -20,6 +20,7 @@ import Oportunidades from "./pages/Oportunidades";
 import OportunidadForm from "./pages/OportunidadForm";
 import OportunidadesDescartadas from "./pages/OportunidadesDescartadas";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import Pipeline from "./pages/Pipeline";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,7 +67,7 @@ const App = () => (
               <Route path="/oportunidades/nueva" element={<ProtectedRoute><OportunidadForm /></ProtectedRoute>} />
               <Route path="/oportunidades/:id/editar" element={<ProtectedRoute><OportunidadForm /></ProtectedRoute>} />
               <Route path="/oportunidades/descartadas" element={<ProtectedRoute><OportunidadesDescartadas /></ProtectedRoute>} />
-              <Route path="/pipeline" element={<ProtectedRoute><PlaceholderPage title="Pipeline" /></ProtectedRoute>} />
+               <Route path="/pipeline" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />
               <Route path="/reportes" element={<ProtectedRoute><PlaceholderPage title="Reportes" /></ProtectedRoute>} />
 
               <Route path="*" element={<NotFound />} />
