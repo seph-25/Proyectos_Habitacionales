@@ -5,6 +5,7 @@ import { Spinner } from "@/components/Spinner";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInHours, differenceInDays, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
+import { keyof } from "zod/v4";
 
 interface Prospecto {
   id: string;
@@ -25,19 +26,23 @@ interface StaleTimeEntry {
 }
 
 const PIPELINE_STAGES = [
-  "Prospección",
-  "Presentación",
-  "Negociación",
-  "Formalización",
-  "Cerrada",
+  "Nuevo",
+  "Contactado",
+  "Calificado",
+  "Negociando",
+  "Cerrado",
+  "Perdido",
 ] as const;
 
-const STAGE_COLORS: Record<string, { bg: string; border: string; header: string; text: string }> = {
-  "Prospección":   { bg: "bg-blue-50",    border: "border-blue-200",    header: "bg-blue-600",    text: "text-blue-700" },
-  "Presentación": { bg: "bg-indigo-50",   border: "border-indigo-200",   header: "bg-indigo-600",  text: "text-indigo-700" },
-  "Negociación":  { bg: "bg-amber-50",    border: "border-amber-200",    header: "bg-amber-600",   text: "text-amber-700" },
-  "Formalización":{ bg: "bg-purple-50",   border: "border-purple-200",   header: "bg-purple-600",  text: "text-purple-700" },
-  "Cerrada":      { bg: "bg-green-50",    border: "border-green-200",    header: "bg-green-600",  text: "text-green-700" },
+type PIPELINE_STAGES_TYPE = typeof PIPELINE_STAGES[number]
+
+const STAGE_COLORS: Record<PIPELINE_STAGES_TYPE, { bg: string; border: string; header: string; text: string }> = {
+  "Nuevo":   { bg: "bg-blue-50",    border: "border-blue-200",    header: "bg-blue-600",    text: "text-blue-700" },
+  "Contactado": { bg: "bg-indigo-50",   border: "border-indigo-200",   header: "bg-indigo-600",  text: "text-indigo-700" },
+  "Calificado":  { bg: "bg-amber-50",    border: "border-amber-200",    header: "bg-amber-600",   text: "text-amber-700" },
+  "Negociando":{ bg: "bg-purple-50",   border: "border-purple-200",   header: "bg-purple-600",  text: "text-purple-700" },
+  "Cerrado":      { bg: "bg-green-50",    border: "border-green-200",    header: "bg-green-600",  text: "text-green-700" },
+  "Perdido":      { bg: "bg-green-50",    border: "border-green-200",    header: "bg-green-600",  text: "text-green-700" },
 };
 
 function computeStaleTime(changedAt: string): StaleTimeEntry {
@@ -141,36 +146,38 @@ const Pipeline = () => {
       .select("id, nombre, apellidos, status, proyecto_id, updated_at, projects(name)")
       .order("updated_at", { ascending: false });
 
-    const mapped: Prospecto[] = (data ?? []).map((p: any) => ({
-      id: p.id,
-      nombre: p.nombre,
-      apellidos: p.apellidos,
-      status: p.status,
-      proyecto_id: p.proyecto_id ?? null,
+      
+      const mapped: Prospecto[] = (data ?? []).map((p: any) => ({
+        id: p.id,
+        nombre: p.nombre,
+        apellidos: p.apellidos,
+        status: p.status,
+        proyecto_id: p.proyecto_id ?? null,
       proyecto_nombre: p.projects?.name ?? null,
       updated_at: p.updated_at,
     }));
-
+    
     const times: Record<string, StaleTimeEntry> = {};
     for (const p of mapped) {
       times[p.id] = computeStaleTime(p.updated_at);
     }
-
+    
     setProspectos(mapped);
     setStaleTimes(times);
     setLoading(false);
   };
-
+  
   useEffect(() => { load(); }, []);
-
+  
   const byStage = useMemo(() => {
+    console.log(prospectos)
     const map: Record<string, Prospecto[]> = {};
     for (const stage of PIPELINE_STAGES) {
       map[stage] = prospectos.filter((p) => p.status === stage);
     }
     return map;
   }, [prospectos]);
-
+  
   return (
     <AppLayout title="Pipeline">
       <div className="mb-6">
