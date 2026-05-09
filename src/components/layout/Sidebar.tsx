@@ -7,33 +7,50 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLoginModal } from "@/contexts/LoginModalContext";
+import { useMemo } from "react";
 
 interface SidebarProps {
   open: boolean;
   onClose: () => void;
 }
 
+type SideBarItem = { to: string; label: string; icon: React.ElementType; exact?: boolean }
+
 const NAV_PUBLIC = [
   { to: "/catalogo", label: "Catálogo", icon: BookOpen },
 ];
 
-const NAV_PRIVATE: { to: string; label: string; icon: React.ElementType; exact?: boolean }[] = [
-  { to: "/",          label: "Dashboard",  icon: LayoutDashboard, exact: true },
-  { to: "/proyectos", label: "Proyectos",  icon: Building2 },
-  { to: "/catalogo",  label: "Catálogo",   icon: BookOpen },
-  { to: "/prospectos",label: "Prospectos", icon: Users },
-  { to: "/citas",     label: "Citas",      icon: Calendar },
+const NAV_PRIVATE: SideBarItem[] = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { to: "/proyectos", label: "Proyectos", icon: Building2 },
+  { to: "/catalogo", label: "Catálogo", icon: BookOpen },
+  { to: "/prospectos", label: "Prospectos", icon: Users },
+  { to: "/citas", label: "Citas", icon: Calendar },
   { to: "/oportunidades", label: "Pipeline", icon: TrendingUp },
-  { to: "/reportes",  label: "Reportes",   icon: BarChart2 },
-  { to: "/dashboard-ejecutivo", label: "Dashboard Ejecutivo", icon: BarChart3 },
+  { to: "/reportes", label: "Reportes", icon: BarChart2 },
 ];
+
+const NAV_GERENTE_COMERCIAL_EXCLUSIVE: SideBarItem[] = [
+  { to: "/dashboard-ejecutivo", label: "Dashboard Ejecutivo", icon: BarChart3 },
+]
 
 export const Sidebar = ({ open, onClose }: SidebarProps) => {
   const { pathname } = useLocation();
   const { user, profile, signOut } = useAuth();
   const { openLoginModal } = useLoginModal();
 
-  const NAV = user ? NAV_PRIVATE : NAV_PUBLIC;
+  const NAV: SideBarItem[] = useMemo(() => {
+    let result: SideBarItem[] = []
+
+    if (!user || !profile) return NAV_PUBLIC
+
+    result.push(...NAV_PRIVATE)
+
+    if (profile.role === "Gerente Comercial") result.push(...NAV_GERENTE_COMERCIAL_EXCLUSIVE)
+
+    return result;
+  }, [user, profile])
+
 
   const isActive = (to: string, exact?: boolean) => {
     if (exact) return pathname === to;
