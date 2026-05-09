@@ -101,6 +101,17 @@ Una vez que tengas Bun instalado y hayas clonado el repositorio, usa estos coman
    bun run build
    ```
 
+---
 
+## 📝 Nota sobre Nuevas Dependencias (Módulo de Reportes)
+
+Después de hacer `git pull`, asegúrate de correr `bun install` para instalar las siguientes dependencias nuevas agregadas para el módulo de Reportes:
+
+- **jspdf**: Librería para generar documentos PDF programáticamente. Se usa para exportar los reportes a PDF.
+- **html2canvas**: Herramienta que convierte elementos HTML a canvas (imágenes), utilizada para capturar el contenido visual de los reportes antes de exportarlos a PDF.
+
+Estas dependencias permiten al usuario descargar los reportes de inventario y métricas de ventas en formato PDF.
+
+---
 
 Esto le dará un toque muy profesional ante los ojos del profesor. ¡Mucho éxito con el inicio de Habitatrack!
