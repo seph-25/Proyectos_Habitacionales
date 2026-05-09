@@ -20,6 +20,7 @@ import Oportunidades from "./pages/Oportunidades";
 import OportunidadForm from "./pages/OportunidadForm";
 import OportunidadesDescartadas from "./pages/OportunidadesDescartadas";
 import Reportes from "./pages/Reportes";
+import DashboardEjecutivo from "./pages/DashboardEjecutivo";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="/oportunidades/:id/editar" element={<ProtectedRoute><OportunidadForm /></ProtectedRoute>} />
               <Route path="/oportunidades/descartadas" element={<ProtectedRoute><OportunidadesDescartadas /></ProtectedRoute>} />
               <Route path="/reportes" element={<ProtectedRoute><Reportes /></ProtectedRoute>} />
+              <Route path="/dashboard-ejecutivo" element={<ProtectedRoute><DashboardEjecutivo /></ProtectedRoute>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

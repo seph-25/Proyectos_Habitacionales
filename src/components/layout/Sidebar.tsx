@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Building2, BookOpen, Users,
-  Calendar, TrendingUp, BarChart2, LogOut, X,
+  Calendar, TrendingUp, BarChart2, BarChart3, LogOut, X,
   UserCircle, LogIn,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ const NAV_PUBLIC = [
   { to: "/catalogo", label: "Catálogo", icon: BookOpen },
 ];
 
-const NAV_PRIVATE = [
+const NAV_PRIVATE: { to: string; label: string; icon: React.ElementType; exact?: boolean }[] = [
   { to: "/",          label: "Dashboard",  icon: LayoutDashboard, exact: true },
   { to: "/proyectos", label: "Proyectos",  icon: Building2 },
   { to: "/catalogo",  label: "Catálogo",   icon: BookOpen },
@@ -25,6 +25,7 @@ const NAV_PRIVATE = [
   { to: "/citas",     label: "Citas",      icon: Calendar },
   { to: "/oportunidades", label: "Pipeline", icon: TrendingUp },
   { to: "/reportes",  label: "Reportes",   icon: BarChart2 },
+  { to: "/dashboard-ejecutivo", label: "Dashboard Ejecutivo", icon: BarChart3 },
 ];
 
 export const Sidebar = ({ open, onClose }: SidebarProps) => {
