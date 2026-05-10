@@ -1,11 +1,14 @@
 import { useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLoginModal } from "@/contexts/LoginModalContext";
 
+const GERENTE_COMERCIAL_EXCLUSIVE_ROUTES = ["/dashboard-ejecutivo"]
+
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, profile } = useAuth();
   const { openLoginModal } = useLoginModal();
+  const location = useLocation();
 
   useEffect(() => {
     // Si alguien intenta acceder a una ruta protegida sin sesión,
@@ -22,7 +25,9 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   );
 
   // Si no hay sesión, redirige al catálogo mientras el modal se abre
-  if (!user) return <Navigate to="/catalogo" replace />;
+  if (!user || !profile) return <Navigate to="/catalogo" replace />;
+
+  if (profile.role !== "Gerente Comercial" && GERENTE_COMERCIAL_EXCLUSIVE_ROUTES.includes(location.pathname)) return <Navigate to="/" replace />
 
   return <>{children}</>;
 };
